@@ -37,12 +37,15 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.PYTHONANYWHERE_SSH_KEY }}
 
-      - name: SCP files to PythonAnywhere
-        run: scp -o StrictHostKeyChecking=no -r * misoto22@ssh.pythonanywhere.com:/home/misoto22/Smart-Vision-Hat
+      - name: SSH Connection Debugging
+        run: ssh -v misoto22@ssh.pythonanywhere.com
 
-      # Use the PythonAnywhere API to restart your web app:
-      - name: Restart web app on PythonAnywhere
-        run: |
-          curl -H "Authorization: Token ${{ secrets.PYTHONANYWHERE_API_TOKEN }}" \
-               -X POST \
-               https://www.pythonanywhere.com/api/v0/user/misoto22/webapps/misoto22.pythonanywhere.com/reload/
+      # - name: SCP files to PythonAnywhere
+      #   run: scp -o StrictHostKeyChecking=no -r * misoto22@ssh.pythonanywhere.com:/home/misoto22/Smart-Vision-Hat
+
+      # # Use the PythonAnywhere API to restart your web app:
+      # - name: Restart web app on PythonAnywhere
+      #   run: |
+      #     curl -H "Authorization: Token ${{ secrets.PYTHONANYWHERE_API_TOKEN }}" \
+      #          -X POST \
+      #          https://www.pythonanywhere.com/api/v0/user/misoto22/webapps/misoto22.pythonanywhere.com/reload/
