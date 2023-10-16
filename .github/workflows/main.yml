@@ -21,24 +21,24 @@ jobs:
           python-version: 3.10.5
           cache: "pip"
 
-      # - name: Install dependencies
-      #   run: |
-      #     python -m pip install --upgrade pip
-      #     pip install -r requirements.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-      # - name: Run tests
-      #   run: pytest tests
-      #   env:
-      #     PYTHONPATH: ./:$PYTHONPATH
+      - name: Run tests
+        run: pytest tests
+        env:
+          PYTHONPATH: ./:$PYTHONPATH
 
-      # CD
-      - name: Setup SSH and SCP
-        uses: webfactory/ssh-agent@v0.8.0
-        with:
-          ssh-private-key: ${{ secrets.PYTHONANYWHERE_SSH_KEY }}
+      # # CD
+      # - name: Setup SSH and SCP
+      #   uses: webfactory/ssh-agent@v0.8.0
+      #   with:
+      #     ssh-private-key: ${{ secrets.PYTHONANYWHERE_SSH_KEY }}
 
-      - name: SSH Connection Debugging
-        run: ssh -o StrictHostKeyChecking=no -v misoto22@ssh.pythonanywhere.com
+      # - name: SSH Connection Debugging
+      #   run: ssh -o StrictHostKeyChecking=no -v misoto22@ssh.pythonanywhere.com
 
       # - name: SCP files to PythonAnywhere
       #   run: scp -o StrictHostKeyChecking=no -r * misoto22@ssh.pythonanywhere.com:/home/misoto22/Smart-Vision-Hat
