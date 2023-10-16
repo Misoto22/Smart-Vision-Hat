@@ -7,10 +7,13 @@ from dotenv import load_dotenv
 import pyrebase
 from app.ask_handler import ask_bp
 from app.api import api_bp
+# from app.sendgrid_email import send_email
 import json
 import git
 import logging
 import requests
+from collections import defaultdict
+import datetime
 
 
 # Logging
@@ -20,7 +23,6 @@ logger = logging.getLogger(__name__)
 
 app.register_blueprint(ask_bp, url_prefix='/')
 app.register_blueprint(api_bp)
-
 
 
 
@@ -200,12 +202,11 @@ def system_log():
         detected_images = []
 
         if user_data and "images" in user_data:
-            for image_id, image_data in user_data["images"].items():
-                detected_images.append({
-                    "image_url": image_data.get('imageURL'),
-                    "labels": image_data.get('label')  # Adjusted the key to 'detected_results'
-                })
-
+            detected_images = list(user_data["images"].values())
+        # print(detected_images[-1])
+        # Assuming your array is named 'detected_images'
+        detected_images = sorted(detected_images, key=lambda x: x['timestamp'], reverse=True)
+        # print(detected_images)
         return render_template('system_log.html', detected_images=detected_images, title='Smart Vision Hat', page_name='System Log')
     except Exception as e:
         # Handle errors as necessary, maybe log them and return a generic error message
@@ -271,36 +272,51 @@ def upload_img():
 
 
 
-# Ongoing
+from collections import defaultdict
+
 @app.route('/usage_stats')
 def usage_stats():
     try:
-        # Fetch the logged data from Firebase
-        detected_images_data = db.child("images").get().val()
+        user_uid = session.get('uid')
+        user_data = db.child("users").child(user_uid).get().val()
 
-        # Sample stats - modify this to collect the exact statistics you need
-        total_detections = 0
-        detections_by_object = {}  # A dictionary to count how many times each object was detected
+        detections_by_object_time = defaultdict(list)
+        detections_by_object_count = defaultdict(int)
+        mode_counts_time = defaultdict(list)
+        hour_counts = defaultdict(int)
 
-        if detected_images_data:
-            total_detections = len(detected_images_data)
-            for key, value in detected_images_data.items():
-                detected_object = value.get('detectionResult')
-                detections_by_object[detected_object] = detections_by_object.get(detected_object, 0) + 1
+        if user_data and "images" in user_data:
+            detected_images = list(user_data["images"].values())
+            
+            for image_data in detected_images:
+                labels = image_data.get('labels', {})
+                mode = image_data.get('mode', 'Unknown')
+                timestamp = image_data.get('timestamp')
+                hour = timestamp.split(' ')[1].split(':')[0]
 
-        # Convert the dictionary to a format suitable for plotting (if using charts)
-        objects_detected = list(detections_by_object.keys())
-        objects_counts = list(detections_by_object.values())
+                for object_name, count in labels.items():
+                    detections_by_object_time[object_name].append(timestamp)
+                    detections_by_object_count[object_name] += count
+                
+                mode_counts_time[mode].append(timestamp)
+                hour_counts[hour] += 1
+
+        sorted_detections = sorted(detections_by_object_count.items(), key=lambda x: x[1], reverse=True)[:10]
+        top_10_detections_by_object_time = {k: detections_by_object_time[k] for k, v in sorted_detections}
+        sorted_hour_counts = {k: hour_counts[k] for k in sorted(hour_counts)}
 
         return render_template('usage_stats.html', 
-                               total_detections=total_detections, 
-                               objects_detected=objects_detected, 
-                               objects_counts=objects_counts, 
-                               title='Smart Vision Hat', 
-                               page_name='Usage Stats')
+                                title='Smart Vision Hat', 
+                                page_name='Usage Stats',
+                                detections_by_object_time=top_10_detections_by_object_time, 
+                                mode_counts_time=mode_counts_time, 
+                                hour_counts=sorted_hour_counts)
     except Exception as e:
-        # Handle errors as necessary
         return str(e)
+
+
+
+
 
 # Ongoing
 @app.route('/update_user_data', methods=['POST'])
@@ -354,8 +370,11 @@ def about_us():
 def contact_us():
     return render_template('contact_us.html', title='Smart Vision Hat', page_name='Contact Us')
 
-
-
+# @app.route('/send_email', methods=['POST'])
+# def send_email():
+#     user = request.form.get('user')
+#     send_email(user)
+#     return redirect(url_for('index'))
 
 
 
@@ -375,3 +394,26 @@ def update_software():
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template('components/404.html'), 404
+
+# from flask import Flask
+# from flask_mail import Mail, Message
+
+
+# # Configuration for your email server
+# app.config['MAIL_SERVER'] = 'smtp.gmail.com'  # Gmail SMTP server
+# app.config['MAIL_PORT'] = 587  # Use the appropriate port for Gmail
+# app.config['MAIL_USE_TLS'] = True  # Gmail requires TLS
+# app.config['MAIL_USERNAME'] = 'smartvisionhat@gmail.com'  # Your Gmail email address
+# app.config['MAIL_PASSWORD'] = 'smart.123456'  # Your Gmail email password
+
+
+# # Initialize Flask-Mail
+# mail = Mail(app)
+
+# # Create and send an email
+# @app.route('/api/send_email', methods=["GET", "POST"])
+# def send_email():
+#     msg = Message('Hello from Flask-Mail', sender=app.config['MAIL_USERNAME'], recipients=['dhruvjobanputra8@gmail.com'])
+#     msg.body = 'This is a test email sent from Flask using Flask-Mail.'
+#     mail.send(msg)
+#     return 'Email sent successfully.'
